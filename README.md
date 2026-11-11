@@ -35,7 +35,7 @@ cd jax-hamiltonian-mechanics
 pip install -e ".[dev]"
 ```
 
-> **Want to run this right away?** [`playground.py`](playground.py) is this section as a ready-to-run script with printed output: `python playground.py`. Edit it and re-run to experiment.
+> **Prefer to explore interactively?** Open [`notebooks/quickstart.ipynb`](notebooks/quickstart.ipynb), a guided, runnable version of this section with plots (`pip install jupyter`, then `jupyter notebook notebooks/quickstart.ipynb`).
 
 ```python
 import jax
@@ -215,7 +215,7 @@ src/hamjax/
   initial_conditions.py figure-eight, Kepler two-body, Plummer sphere
   hnn.py                HNN, SeparableHNN, BaselineMLP, hnn_loss  (Equinox)
 examples/               scripts that produce every figure in this README
-playground.py           the Quickstart as a runnable script to experiment with
+notebooks/              quickstart.ipynb: interactive tour with plots
 tests/                  pytest suite (runs in float64)
 assets/                 generated figures
 ```
