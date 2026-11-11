@@ -82,7 +82,7 @@ Hamilton's equations for a state `z = (q, p)`:
 For gravitating bodies with Plummer softening `ε`,
 
 ```math
-H = \sum_i \frac{|p_i|^2}{2m_i} \;-\; \sum_{i<j} \frac{G\,m_i m_j}{\sqrt{|q_i-q_j|^2+\varepsilon^2}}
+H = \sum_i \frac{\lvert p_i \rvert^2}{2 m_i} - \sum_{i \lt j} \frac{G\, m_i m_j}{\sqrt{\lvert q_i - q_j \rvert^2 + \varepsilon^2}}
 ```
 
 **Velocity Verlet** (kick–drift–kick) splits `H = T + V` and composes their exact flows:
