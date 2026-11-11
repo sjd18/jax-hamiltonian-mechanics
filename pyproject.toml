@@ -33,7 +33,3 @@ target-version = "py310"
 select = ["E", "F", "I", "UP", "B"]
 # F722: jaxtyping shape strings; B008: Equinox modules are immutable, safe as defaults.
 ignore = ["E741", "F722", "B008"]
-
-[tool.ruff.lint.per-file-ignores]
-# Notebooks enable float64 via jax.config before importing the rest.
-"*.ipynb" = ["E402"]
