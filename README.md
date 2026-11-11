@@ -12,7 +12,7 @@
 
 <p align="center"><img src="assets/figure_eight.png" width="100%" alt="Figure-eight three-body orbit and energy error over 1,000 periods for velocity Verlet, Yoshida 4 and RK4"></p>
 
-> The figure-eight three-body choreography integrated for **1,000 periods at 100 steps per period**. RK4 is the more accurate method per step, yet its energy error grows without bound. Velocity Verlet's error is larger but **bounded** — it exactly conserves a nearby "shadow" Hamiltonian. That's what symplectic means in practice.
+> The figure-eight three-body choreography integrated for **1,000 periods at 100 steps per period**. RK4 starts out more accurate, but its energy error grows steadily and ends roughly 10× worse. Velocity Verlet's error stays **bounded** (it oscillates instead of drifting), because Verlet exactly conserves a nearby "shadow" Hamiltonian. That's what symplectic means in practice.
 
 ---
 
@@ -30,7 +30,8 @@
 ## Quickstart
 
 ```bash
-git clone <this-repo> && cd jax-hamiltonian-mechanics
+git clone https://github.com/sjd18/jax-hamiltonian-mechanics.git
+cd jax-hamiltonian-mechanics
 pip install -e ".[dev]"
 ```
 
@@ -74,15 +75,25 @@ traj = hj.simulate(AnharmonicChain(), hj.PhaseSpace(q0, p0), dt=0.01, n_steps=10
 
 Hamilton's equations for a state `z = (q, p)`:
 
-$$\dot q = \frac{\partial H}{\partial p}, \qquad \dot p = -\frac{\partial H}{\partial q} \qquad\Longleftrightarrow\qquad \dot z = J\,\nabla H(z),\quad J = \begin{pmatrix}0 & I\\ -I & 0\end{pmatrix}.$$
+```math
+\dot q = \frac{\partial H}{\partial p}, \qquad \dot p = -\frac{\partial H}{\partial q} \qquad\Longleftrightarrow\qquad \dot z = J\,\nabla H(z),\quad J = \begin{pmatrix}0 & I\\ -I & 0\end{pmatrix}
+```
 
 For gravitating bodies with Plummer softening `ε`,
 
-$$H = \sum_i \frac{|p_i|^2}{2m_i} \;-\; \sum_{i<j} \frac{G\,m_i m_j}{\sqrt{|q_i-q_j|^2+\varepsilon^2}}.$$
+```math
+H = \sum_i \frac{|p_i|^2}{2m_i} \;-\; \sum_{i<j} \frac{G\,m_i m_j}{\sqrt{|q_i-q_j|^2+\varepsilon^2}}
+```
 
 **Velocity Verlet** (kick–drift–kick) splits `H = T + V` and composes their exact flows:
 
-$$p_{n+\frac12} = p_n + \tfrac{\Delta t}{2}F(q_n),\qquad q_{n+1} = q_n + \Delta t\,\nabla T(p_{n+\frac12}),\qquad p_{n+1} = p_{n+\frac12} + \tfrac{\Delta t}{2}F(q_{n+1}),$$
+```math
+\begin{aligned}
+p_{n+1/2} &= p_n + \tfrac{\Delta t}{2}\,F(q_n) && \text{half kick}\\
+q_{n+1} &= q_n + \Delta t\,\nabla T(p_{n+1/2}) && \text{drift}\\
+p_{n+1} &= p_{n+1/2} + \tfrac{\Delta t}{2}\,F(q_{n+1}) && \text{half kick}
+\end{aligned}
+```
 
 with `F = −∇V` from `jax.grad`. Each sub-step is the exact flow of a Hamiltonian, so the composite map is **symplectic** (`MᵀJM = J` for its Jacobian `M`), **time-reversible**, and — for pairwise central forces — conserves **linear and angular momentum to round-off**. Backward error analysis shows it exactly conserves a shadow Hamiltonian `H̃ = H + O(Δt²)`, which is why the energy error oscillates instead of drifting.
 
@@ -107,9 +118,9 @@ Each design choice maps onto an idea from the JAX docs:
 
 ```python
 class AbstractIntegrator(eqx.Module):
-    def init(self, H, state) -> carry           # VelocityVerlet caches F(q₀) here
-    def step(self, H, carry, dt) -> carry       # one Δt; reuses the cached force
-    def state(self, carry) -> PhaseSpace
+    def init(self, H, state): ...  # -> carry; VelocityVerlet caches F(q₀) here
+    def step(self, H, carry, dt): ...  # -> carry; one Δt, reuses the cached force
+    def state(self, carry): ...  # -> PhaseSpace
 ```
 
 `simulate` threads this through `rollout(step_fn, init, n_steps, save_every)`, which is generic — use it to roll out any `carry → carry` map (the HNN example uses it for an RK4 on a learned vector field).
@@ -152,7 +163,13 @@ Momentum conservation to round-off is a structural property: Newton's third law 
 Following [Greydanus, Dzamba & Yosinski (2019)](https://arxiv.org/abs/1906.01563), an HNN learns a **scalar** `H_θ(q, p)` and defines the dynamics as its symplectic gradient `J∇H_θ`, trained by regressing onto observed `(q̇, ṗ)`:
 
 ```python
-model = hj.HNN(dim=1, width=200, key=key)  # eqx.nn.MLP → scalar
+import equinox as eqx
+
+H_true = hj.HarmonicOscillator()
+states = hj.PhaseSpace(*jax.random.uniform(jax.random.PRNGKey(0), (2, 256, 1), minval=-1, maxval=1))
+targets = jax.vmap(lambda s: hj.hamiltonian_vector_field(H_true, s))(states)  # observed (q̇, ṗ)
+
+model = hj.HNN(dim=1, width=200, key=jax.random.PRNGKey(1))  # eqx.nn.MLP → scalar H_θ
 loss, grads = eqx.filter_value_and_grad(hj.hnn_loss)(model, states, targets)
 ```
 
@@ -188,7 +205,7 @@ The suite checks properties, not just outputs:
 
 ## Repository layout
 
-```
+```text
 src/hamjax/
   hamiltonians.py       PhaseSpace, SeparableHamiltonian, NBody, HarmonicOscillator, Pendulum
   integrators.py        VelocityVerlet, Yoshida4, RK4, rollout (lax.scan), simulate
