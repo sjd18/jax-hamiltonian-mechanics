@@ -46,7 +46,7 @@ H = hj.NBody(masses, G=1.0, softening=0.0)  # only the energy is defined
 
 traj = hj.simulate(H, state, dt=period / 1000, n_steps=100_000, save_every=100)
 traj.q.shape  # (1001, 3, 2)
-hj.relative_energy_error(H, traj).max()  # ~6e-7
+hj.relative_energy_error(H, traj).max()  # ~2e-5 over 100 periods
 hj.NBody(masses).force(state.q)  # = -jax.grad(H.potential)(q)
 ```
 
